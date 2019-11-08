@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 from sqlalchemy import create_engine
 
 #--------------LOAD DATA-------------------------------------------------------
-engine = create_engine('postgresql://postgres:fyg9U6kTVNW1QMbCTrcG@nps-demo-instance.c4wpf5ggnfpo.us-east-2.rds.amazonaws.com/postgres')
+engine = create_engine('postgresql://postgres:kpsk4KsODzYLnksqBtZv@extendclass.cffzaa08iggo.us-east-2.rds.amazonaws.com/postgres')
 df = pd.read_sql("SELECT * from trades", engine.connect(), parse_dates=('Entry time',))
 df.rename(columns={"number": "Number", "trade_type": "Trade type", "entry_time": "Entry time", "exposure":"Exposure",
                   "entry_balance":"Entry balance","exit_balance":"Exit balance","profit":"Profit",
@@ -353,4 +353,4 @@ def update_balance(exchange, leverage, start_date, end_date, data):
     }
 #-------------RUN SERVER---------------------------------------------------------
 if __name__ == "__main__":
-    app.run_server(debug=True,host='0.0.0.0')
+    app.run_server(debug=True)
