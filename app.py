@@ -7,26 +7,30 @@ import dash_html_components as html
 import plotly.graph_objects as go
 from sqlalchemy import create_engine
 
-#--------------LOAD DATA-------------------------------------------------------
-engine = create_engine('postgresql://postgres:kpsk4KsODzYLnksqBtZv@extendclass.cffzaa08iggo.us-east-2.rds.amazonaws.com/postgres')
-df = pd.read_sql("SELECT * from trades", engine.connect(), parse_dates=('Entry time',))
-df.rename(columns={"number": "Number", "trade_type": "Trade type", "entry_time": "Entry time", "exposure":"Exposure",
-                  "entry_balance":"Entry balance","exit_balance":"Exit balance","profit":"Profit",
-                  "pnl_incl_fees":"Pnl (incl fees)","exchange":"Exchange","margin":"Margin","btc_price":"BTC Price"},inplace = True)
 
-#df1 = pd.read_csv('aggr.csv', parse_dates=['Entry time'])
+##----Load de Datos
+sqlLoad = create_engine('postgresql://postgres:kpsk4KsODzYLnksqBtZv@extendclass.cffzaa08iggo.us-east-2.rds.amazonaws.com/postgres')
+df = pd.read_sql("SELECT * from trades", sqlLoad.connect(), parse_dates=('Entry time',))
+df.rename(columns={"number": "Number", "trade_type": "Trade type", 
+					"entry_time": "Entry time", "exposure":"Exposure",
+					"entry_balance":"Entry balance","exit_balance":"Exit balance",
+					"profit":"Profit","pnl_incl_fees":"Pnl (incl fees)",
+					"exchange":"Exchange","margin":"Margin",
+					"btc_price":"BTC Price"},inplace = True)
 
-#-------------PREDIFINED FUNCTIONS---------------------------------------------
+##Carga en DataFrame desde el archivo original
+#df = pd.read_csv('aggr.csv', parse_dates=['Entry time'])
+
 def filter_df(df, exchange, leverage, start_date, end_date):
     df_filtered = df[(df['Exchange']==exchange) & (df['Margin']==int(leverage)) & (df['Entry time'] > start_date) & (df['Entry time'] < end_date)]
     df_filtered.sort_values(by='Entry time', ascending=False)
     df_filtered['YearMonth'] = pd.to_datetime(df_filtered['Entry time'].map(lambda x: "{}-{}".format(x.year, x.month)))
     return df_filtered
 
-#-------------INITIALIZE APP---------------------------------------------------
 app = dash.Dash(__name__, external_stylesheets=['https://codepen.io/uditagarwal/pen/oNvwKNP.css', 'https://codepen.io/uditagarwal/pen/YzKbqyV.css'])
-#app = dash.Dash(__name__, external_stylesheets=['YzKbqyV.css'])
-#-------------LAYOUT-----------------------------------------------------------
+
+
+
 app.layout = html.Div(children=[
     html.Div(
             children=[
@@ -57,34 +61,34 @@ app.layout = html.Div(children=[
                                     )
                                 ]
                             ),
-							html.Div(
-                                className="two columns card 2",
+                            # Leverage Selector
+                            html.Div(
+                                className="two columns card",
                                 children=[
-                                    html.H6("Select Leverage",),
+                                    html.H6("Select Leverage"),
                                     dcc.RadioItems(
                                         id="leverage-select",
                                         options=[
-                                            {'label': label, 'value': label} for label in df['Margin'].unique()
+                                            {'label': str(label), 'value': str(label)} for label in df['Margin'].unique()
                                         ],
                                         value='1',
                                         labelStyle={'display': 'inline-block'}
-                                    )
+                                    ),
                                 ]
                             ),
-							html.Div(
+                            html.Div(
                                 className="three columns card",
                                 children=[
-                                    html.H6("Select a Date Range",),
+                                    html.H6("Select a Date Range"),
                                     dcc.DatePickerRange(
                                         id="date-range",
-										min_date_allowed = dt.date(2017, 1, 1),
-										display_format='MM/YY',
-										start_date=df['Entry time'].min(),
-                                        end_date=df['Entry time'].max(),
-                                    )
+                                        display_format="MM/YY",
+                                        start_date=df['Entry time'].min(),
+                                        end_date=df['Entry time'].max()
+                                    ),
                                 ]
                             ),
-							html.Div(
+                            html.Div(
                                 id="strat-returns-div",
                                 className="two columns indicator pretty_container",
                                 children=[
@@ -105,7 +109,7 @@ app.layout = html.Div(children=[
                                 className="two columns indicator pretty_container",
                                 children=[
                                     html.P(id="strat-vs-market", className="indicator_value"),
-                                    html.P('Strategy vs. Market', className="twelve columns indicator_text"),
+                                    html.P('Strategy vs. Market Returns', className="twelve columns indicator_text"),
                                 ]
                             ),
                         ]
@@ -138,48 +142,39 @@ app.layout = html.Div(children=[
                                     {'name': 'Exit balance', 'id': 'Exit balance'},
                                     {'name': 'Pnl (incl fees)', 'id': 'Pnl (incl fees)'},
                                 ],
+                                style_cell={'width': '50px'},
                                 style_table={
                                     'maxHeight': '450px',
                                     'overflowY': 'scroll'
                                 },
-								fixed_rows={'headers': True, 'data': 0},
-								style_header={'backgroundColor': 'rgb(30, 30, 30)'},
-								style_cell={'width': '50px',
-											'backgroundColor': 'rgb(50, 50, 50)',
-											'color': 'white'
-								},
                             )
                         ]
                     ),
                     dcc.Graph(
                         id="pnl-types",
                         className="six columns card",
-                        figure={},
-						style={'height': 450, 'width': 650}
+                        figure={}
                     )
                 ]
             ),
-			html.Div(
+            html.Div(
                 className="padding row",
                 children=[
                     dcc.Graph(
                         id="daily-btc",
                         className="six columns card",
-                        figure={},
-						style={'height': 350, 'width': 670}
+                        figure={}
                     ),
                     dcc.Graph(
                         id="balance",
                         className="six columns card",
-                        figure={},
-						style={'height': 350, 'width': 650}
+                        figure={}
                     )
                 ]
-            )			
-    ])        
+            )
+        ]
+    )        
 ])
-
-#-------------CALLBACK----------------------------------------------------------
 @app.callback(
     [
         dash.dependencies.Output('date-range', 'start_date'),
@@ -192,7 +187,7 @@ app.layout = html.Div(children=[
 def update_daterange(value):
     list = df[df['Exchange'] == value]
     return (list['Entry time'].min(), list['Entry time'].max())
-
+	
 def calc_returns_over_month(dff):
     out = []
 
@@ -257,20 +252,20 @@ def update_monthly(exchange, leverage, start_date, end_date):
             'title': 'Overview of Monthly performance'
         }
     }, f'{btc_returns:0.2f}%', f'{strat_returns:0.2f}%', f'{strat_vs_market:0.2f}%'
-
+	
 @app.callback(
-    dash.dependencies.Output('table', 'data'),
-    (
-        dash.dependencies.Input('exchange-select', 'value'),
-        dash.dependencies.Input('leverage-select', 'value'),
-        dash.dependencies.Input('date-range', 'start_date'),
-        dash.dependencies.Input('date-range', 'end_date'),
-    )
+dash.dependencies.Output('table', 'data'),
+(
+	dash.dependencies.Input('exchange-select', 'value'),
+	dash.dependencies.Input('leverage-select', 'value'),
+	dash.dependencies.Input('date-range', 'start_date'),
+	dash.dependencies.Input('date-range', 'end_date'),
+)
 )
 def update_table(exchange, leverage, start_date, end_date):
     dff = filter_df(df, exchange, leverage, start_date, end_date)
     return dff.to_dict('records')
-	
+
 @app.callback(
     dash.dependencies.Output('pnl-types', 'figure'),
     (
@@ -281,7 +276,7 @@ def update_table(exchange, leverage, start_date, end_date):
 
     )
 )
-def update_pnl_types(exchange, leverage, start_date, end_date):
+def update_pnl(exchange, leverage, start_date, end_date):
     dff = filter_df(df, exchange, leverage, start_date, end_date)
     dff_long = dff[dff['Trade type']=='Long']
     dff_short = dff[dff['Trade type']=='Short']
@@ -291,12 +286,12 @@ def update_pnl_types(exchange, leverage, start_date, end_date):
                 x=dff_long['Entry time'],
                 y=dff_long['Pnl (incl fees)'],
                 name='long',
-                marker_color='lightsalmon'
+                marker_color='firebrick'
             ),
             go.Bar(
                 x=dff_short['Entry time'],
                 y=dff_short['Pnl (incl fees)'],
-                marker_color='black',
+                marker_color='gray',
                 name='short'
             )
         ],
@@ -351,6 +346,6 @@ def update_balance(exchange, leverage, start_date, end_date, data):
             'title': 'Balance overtime'
         }
     }
-#-------------RUN SERVER---------------------------------------------------------
+
 if __name__ == "__main__":
     app.run_server(debug=True)
